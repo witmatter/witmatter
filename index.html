@@ -257,6 +257,23 @@ function setW(v){memW=v;try{if(v)localStorage.setItem("who",v);else localStorage
 function updW(){$("loginb").textContent=getW()?"Привет, "+getW():"Войти"}
 document.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.id==="wi"){$("lgo").click()}});
 function sc(){var h=document.documentElement,m=h.scrollHeight-innerHeight;h.style.setProperty("--p",m>0?Math.min(1,Math.max(0,scrollY/m)):0)}addEventListener("scroll",sc,{passive:true});addEventListener("resize",sc);addEventListener("hashchange",function(){setTimeout(sc,60)});$("qowt").textContent=QOW;cnt();updW();chips();rows();show(location.hash.slice(1));sc();
+/* Статьи из Supabase: локальные статьи остаются резервом, записи из БД обновляют их по ID. */
+function loadArticlesFromSupabase(){
+  fetch(SB_URL+"/rest/v1/articles?select=id,cat,t,lead,m,p,also,sub,published&published=eq.true&order=created_at.desc",{headers:{apikey:SB_KEY,Accept:"application/json"}})
+    .then(function(r){if(!r.ok)throw new Error("Не удалось загрузить статьи");return r.json()})
+    .then(function(rowsFromDb){
+      if(!Array.isArray(rowsFromDb)||!rowsFromDb.length)return;
+      var db={}; rowsFromDb.forEach(function(a){
+        if(!a||!a.id||!a.t||!Array.isArray(a.p))return;
+        db[String(a.id)]={id:String(a.id),cat:a.cat||"История",t:a.t,lead:a.lead||"",m:Number(a.m)||1,p:a.p,also:Array.isArray(a.also)?a.also:[],sub:a.sub||""};
+      });
+      var merged=[],seen={};
+      A.forEach(function(a){merged.push(db[a.id]||a);seen[a.id]=true});
+      rowsFromDb.forEach(function(a){var id=String(a.id);if(db[id]&&!seen[id]){merged.push(db[id]);seen[id]=true}});
+      A=merged;chips();rows();renderShelf();if(location.hash)show(location.hash.slice(1));
+    }).catch(function(e){console.warn("WitMatter: статьи из Supabase не загрузились; показаны встроенные статьи.",e)});
+}
+loadArticlesFromSupabase();
 /* ФАКТ ДНЯ: свои факты добавляйте в список, каждый в кавычках, через запятую. */
 var DAYFACTS=[
 "У осьминога три сердца: два гоняют кровь через жабры, третье — по всему остальному телу.",
